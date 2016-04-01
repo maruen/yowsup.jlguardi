@@ -8,6 +8,7 @@ from yowsup.layers.axolotl.store.sqlite.liteaxolotlstore import LiteAxolotlStore
 from yowsup.layers.axolotl.protocolentities import *
 from yowsup.structs import ProtocolTreeNode
 from yowsup.common.tools import StorageTools
+from yowsup.common import YowConstants
 
 from axolotl.sessionbuilder import SessionBuilder
 from axolotl.util.keyhelper import KeyHelper
@@ -55,6 +56,7 @@ class YowAxolotlLayer(YowProtocolLayer):
         self.pendingIncomingMessages = {}
         self.skipEncJids = []
         self.v2Jids = [] #people we're going to send v2 enc messages
+        self.retryIncomingMessages = {}
 
     @property
     def store(self):
@@ -116,7 +118,7 @@ class YowAxolotlLayer(YowProtocolLayer):
             self.store = None
 
     def send(self, node):
-        if node.tag == "message" and node["to"] not in self.skipEncJids and not '-' in node["to"]:
+        if node.tag == "message" and node["to"] not in self.skipEncJids and not YowConstants.WHATSAPP_GROUP_SERVER in node["to"] and not YowConstants.WHATSAPP_BROADCAST_SERVER in node["to"]:
             self.handlePlaintextNode(node)
             return
         self.toLower(node)
@@ -224,18 +226,12 @@ class YowAxolotlLayer(YowProtocolLayer):
                 self.handlePreKeyWhisperMessage(node)
             elif encMessageProtocolEntity.getEnc(EncProtocolEntity.TYPE_MSG):
                 self.handleWhisperMessage(node)
-            if encMessageProtocolEntity.getEnc(EncProtocolEntity.TYPE_SKMSG):
+            elif encMessageProtocolEntity.getEnc(EncProtocolEntity.TYPE_SKMSG):
                 self.handleSenderKeyMessage(node)
-        except InvalidMessageException as e:
-            logger.error(e)
-            retry = RetryOutgoingReceiptProtocolEntity.fromMessageNode(node)
-            retry.setRegData(self.store.getLocalRegistrationId())
-            self.toLower(retry.toProtocolTreeNode())
-        except InvalidKeyIdException as e:
-            logger.error(e)
-            retry = RetryOutgoingReceiptProtocolEntity.fromMessageNode(node)
-            retry.setRegData(self.store.getLocalRegistrationId())
-            self.toLower(retry.toProtocolTreeNode())
+
+            if node["id"] in self.retryIncomingMessages:
+                del self.retryIncomingMessages[node["id"]]
+
         except NoSessionException as e:
             logger.error(e)
             entity = GetKeysIqProtocolEntity([senderJid])
@@ -257,6 +253,16 @@ class YowAxolotlLayer(YowProtocolLayer):
             else:
                 logger.error(e)
                 logger.warning("Ignoring message with untrusted identity")
+        except (InvalidMessageException, InvalidKeyIdException, Exception) as e:
+            logger.warning(e)
+            self.retryIncomingMessages[node["id"]] = (self.retryIncomingMessages[node["id"]] + 1) if node["id"] in self.retryIncomingMessages else 1
+            if self.retryIncomingMessages[node["id"]] > 5:
+                 logger.warning("Too many retries!! Going to send the delivery receipt myself!")
+                 self.toLower(OutgoingReceiptProtocolEntity(node["id"], node["from"], read=False, participant = node["participant"], t=node["t"]).toProtocolTreeNode())
+            else:
+                 retry = RetryOutgoingReceiptProtocolEntity.fromMessageNode(node)
+                 retry.setRegData(self.store.getLocalRegistrationId())
+                 self.toLower(retry.toProtocolTreeNode())
 
     def handlePreKeyWhisperMessage(self, node):
         pkMessageProtocolEntity = EncryptedMessageProtocolEntity.fromProtocolTreeNode(node)
@@ -332,6 +338,10 @@ class YowAxolotlLayer(YowProtocolLayer):
             self.handleImageMessage(node, m.image_message)
         elif m.HasField("document_message"):
             self.handleDocumentMessage(node, m.document_message)
+        elif m.HasField("video_message"):
+            self.handleVideoMessage(node, m.video_message)
+        elif m.HasField("audio_message"):
+            self.handleAudioMessage(node, m.audio_message)
         else:
             print(m)
             raise ValueError("Unhandled")
@@ -366,6 +376,47 @@ class YowAxolotlLayer(YowProtocolLayer):
             "ip": "0",
             "mediakey": imageMessage.media_key
         }, data = imageMessage.jpeg_thumbnail)
+        messageNode.addChild(mediaNode)
+
+        self.toUpper(messageNode)
+
+    def handleAudioMessage(self, originalEncNode, audioMessage):
+        messageNode = copy.deepcopy(originalEncNode)
+        messageNode["type"] = "media"
+        mediaNode = ProtocolTreeNode("media", {
+            "type": "audio",
+            "filehash": audioMessage.file_sha256,
+            "size": str(audioMessage.file_length),
+            "url": audioMessage.url,
+            "mimetype": audioMessage.mime_type,
+            "duration": str(audioMessage.duration),
+            "seconds": str(audioMessage.duration),
+            "encoding": "raw",
+            "file": "enc",
+            "ip": "0",
+            "mediakey": audioMessage.media_key
+        })
+        messageNode.addChild(mediaNode)
+
+        self.toUpper(messageNode)
+
+    def handleVideoMessage(self, originalEncNode, videoMessage):
+        messageNode = copy.deepcopy(originalEncNode)
+        messageNode["type"] = "media"
+        mediaNode = ProtocolTreeNode("media", {
+            "type": "video",
+            "filehash": videoMessage.file_sha256,
+            "size": str(videoMessage.file_length),
+            "url": videoMessage.url,
+            "mimetype": videoMessage.mime_type,
+            "duration": str(videoMessage.duration),
+            "seconds": str(videoMessage.duration),
+            "caption": videoMessage.caption,
+            "encoding": "raw",
+            "file": "enc",
+            "ip": "0",
+            "mediakey": videoMessage.media_key
+        }, data = videoMessage.jpeg_thumbnail)
         messageNode.addChild(mediaNode)
 
         self.toUpper(messageNode)
@@ -407,7 +458,7 @@ class YowAxolotlLayer(YowProtocolLayer):
         messageNode["type"] = "media"
         mediaNode = ProtocolTreeNode("media", {
             "latitude": str(locationMessage.degrees_latitude),
-            "longitude": str(locationMessage.degress_longitude),
+            "longitude": str(locationMessage.degrees_longitude),
             "name": "%s %s" % (locationMessage.name, locationMessage.address),
             "url": locationMessage.url,
             "encoding": "raw",
