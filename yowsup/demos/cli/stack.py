@@ -28,5 +28,4 @@ class YowsupCliStack(object):
         except AuthError as e:
             print("Auth Error, reason %s" % e)
         except KeyboardInterrupt:
-            print("\nYowsdown")
             sys.exit(0)

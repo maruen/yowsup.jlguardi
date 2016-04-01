@@ -264,7 +264,6 @@ class DemosArgParser(YowArgParser):
             stack = echoclient.YowsupEchoStack(credentials, not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
-            print("\nYowsdown")
             sys.exit(0)
 
     def startSendClient(self):
@@ -279,7 +278,6 @@ class DemosArgParser(YowArgParser):
                                                not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
-            print("\nYowsdown")
             sys.exit(0)
 
     def startSyncContacts(self):
@@ -292,7 +290,6 @@ class DemosArgParser(YowArgParser):
             stack = contacts.YowsupSyncStack(credentials,self.args["sync"].split(','), not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
-            print("\nYowsdown")
             sys.exit(0)
 
 
