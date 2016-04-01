@@ -1,4 +1,4 @@
 #!/bin/bash
 LINE=$1
-CMMD=`/home/dongles/Local/yowsup.patched/yowsup-cli demos -c /home/dongles/Local/yowsup.patched/configs/${LINE}.cfg -r` 
+CMMD=`${YOWSUP_HOME}/yowsup-cli demos -c ${YOWSUP_HOME}/configs/${LINE}.cfg -r` 
 echo ${CMMD}
