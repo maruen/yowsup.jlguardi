@@ -34,8 +34,15 @@ class YowAuthenticationProtocolLayer(YowProtocolLayer):
         return "Authentication Layer"
 
     def __getCredentials(self, credentials = None):
-        u, pb64 = credentials or self.getProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS)
-        if type(pb64) is str:
+        
+   	if (credentials == None):
+            u = self.getProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS)[0]
+            pb64 = self.getProp(YowAuthenticationProtocolLayer.PROP_CREDENTIALS)[1]
+       	else:
+            u = credentials[0]
+            pb64 = credentials[1]
+
+	if type(pb64) is str:
             pb64 = pb64.encode()
         password = base64.b64decode(pb64)
         return (u, bytearray(password))

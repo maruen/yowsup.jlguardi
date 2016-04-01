@@ -23,7 +23,8 @@ class YowsupSendStack(object):
 
         self.stack.setProp(SendLayer.PROP_MESSAGES, messages)
         self.stack.setProp(YowAuthenticationProtocolLayer.PROP_PASSIVE, True)
-        self.stack.setCredentials(credentials)
+        credentialsHacking = credentials[0],credentials[1]
+        self.stack.setCredentials(credentialsHacking)
 
     def start(self):
         self.stack.broadcastEvent(YowLayerEvent(YowNetworkLayer.EVENT_STATE_CONNECT))

@@ -64,6 +64,10 @@ class YowArgParser(argparse.ArgumentParser):
             print("yowsup-cli v%s\nUsing yowsup v%s" % (__version__, yowsup.__version__))
             sys.exit(0)
 
+	#if self.args["receive"]:
+	#    self.startReceiveClient()
+	#    sys.exit(0)
+
         if self.args["help_config"]:
             print(HELP_CONFIG)
             sys.exit(0)
@@ -217,6 +221,11 @@ class DemosArgParser(YowArgParser):
         sendOpts.add_argument('-s', '--send', action="store", help = "Send a message to specified phone number, "
                                                                      "wait for server receipt and exit",
                               metavar=("phone", "message"), nargs = 2)
+
+	receiveOpts = self.add_argument_group("Receive client demo")
+	receiveOpts.add_argument('-r', '--receive', action="store_true", help = "Receive messages and exit")
+
+
         syncContacts = self.add_argument_group("Sync contacts")
         syncContacts.add_argument('-S','--sync', action = "store" , help = "Sync ( check valid ) whatsapp contacts",metavar =("contacts"))
 
@@ -229,6 +238,8 @@ class DemosArgParser(YowArgParser):
             self.startEcho()
         elif self.args["send"]:
             self.startSendClient()
+        elif self.args["receive"]:
+	    self.startReceiveClient()
         elif self.args["sync"]:
             self.startSyncContacts()
         else:
@@ -241,7 +252,7 @@ class DemosArgParser(YowArgParser):
         elif self.args["config"]:
             config = self.getConfig(self.args["config"])
             assert "password" in config and "phone" in config, "Must specify at least phone number and password in config file"
-            return config["phone"], config["password"]
+            return config["phone"], config["password"], config["name"]
         else:
             return None
 
@@ -264,6 +275,7 @@ class DemosArgParser(YowArgParser):
             stack = echoclient.YowsupEchoStack(credentials, not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
+            print("\nYowsdown")
             sys.exit(0)
 
     def startSendClient(self):
@@ -278,7 +290,21 @@ class DemosArgParser(YowArgParser):
                                                not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
+            #print("\nYowsdown")
             sys.exit(0)
+
+    def startReceiveClient(self):
+        from yowsup.demos import receiveclient
+	credentials = self._getCredentials()
+	if not credentials:
+	    print("Error: You must specify a configuration method")
+	    sys.exit(1)
+	try:
+	    receiveclient.receive_message(credentials)
+	except KeyboardInterrupt:
+	    print("\nYowsdown")
+	    sys.exit(0)
+
 
     def startSyncContacts(self):
         from yowsup.demos import contacts
@@ -290,6 +316,7 @@ class DemosArgParser(YowArgParser):
             stack = contacts.YowsupSyncStack(credentials,self.args["sync"].split(','), not self.args["unmoxie"])
             stack.start()
         except KeyboardInterrupt:
+            print("\nYowsdown")
             sys.exit(0)
 
 
