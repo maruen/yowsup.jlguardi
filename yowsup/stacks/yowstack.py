@@ -152,7 +152,8 @@ class YowStack(object):
         self.__stackInstances[0].receive(data)
 
     def setCredentials(self, credentials):
-        self.getLayerInterface(YowAuthenticationProtocolLayer).setCredentials(*credentials)
+	credentialsHacking = credentials[0],credentials[1]
+        self.getLayerInterface(YowAuthenticationProtocolLayer).setCredentials(*credentialsHacking)
 
     def addLayer(self, layerClass):
         self.__stack.push(layerClass)
