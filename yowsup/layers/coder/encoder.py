@@ -109,7 +109,7 @@ class WriteEncoder:
         data.append((v & 0xFF00) >> 8)
         data.append((v & 0xFF) >> 0)
 
-   def writeInt31(self, v, data):
+    def writeInt31(self, v, data):
         data.append((0x7F000000 & v) >> 24)
         data.append((0xFF0000 & v) >> 16)
         data.append((0xFF00 & v) >> 8)

@@ -67,7 +67,7 @@ class ReadDecoder:
                 raise Exception("Bad nibble %s" % dec)
         return string
 
-   def readPacked8(self, n, data):
+    def readPacked8(self, n, data):
         size = self.readInt8(data)
         remove = 0
         if (size & 0x80) != 0 and n == 251:
@@ -146,7 +146,7 @@ class ReadDecoder:
         value = (int1 << 16) + (int2 << 8) + (int3 << 0)
         return value
 
-   def readInt31(self, data):
+    def readInt31(self, data):
         data.pop(0)
         int1 = data.pop(0)
         int2 = data.pop(0)
@@ -185,7 +185,7 @@ class ReadDecoder:
         if token == 0:
             return None
 
-       if token in (236, 237, 238, 239):
+        if token in (236, 237, 238, 239):
             return self.getTokenDouble(token - 236, self.readInt8(data))
 
         if token == 250:
